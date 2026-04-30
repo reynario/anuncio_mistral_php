@@ -1,9 +1,11 @@
 FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache nginx supervisor curl \
+    && apk add --no-cache --virtual .build-deps autoconf g++ make \
     && docker-php-ext-install pdo pdo_mysql \
     && pecl install apcu \
     && docker-php-ext-enable apcu \
+    && apk del .build-deps \
     && echo "apc.enable_cli=1" >> /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini \
     && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/zz-memory.ini
 
