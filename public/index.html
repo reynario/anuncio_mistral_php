@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Campanha Unica - Meta</title>
+    <style>
+      :root {
+        --bg: #f4f6fb;
+        --card: #ffffff;
+        --text: #131722;
+        --muted: #5a6275;
+        --line: #dce2ef;
+        --primary: #1f5eff;
+        --danger: #b00020;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top left, #e8efff 0, var(--bg) 55%);
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 24px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      label {
+        font-weight: 600;
+      }
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+      }
+      input,
+      select,
+      textarea {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        background: #fff;
+      }
+      textarea {
+        min-height: 84px;
+      }
+      button {
+        border: 0;
+        border-radius: 10px;
+        background: var(--primary);
+        color: white;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+      .btn-link {
+        display: inline-block;
+        border: 0;
+        border-radius: 10px;
+        background: var(--primary);
+        color: white;
+        padding: 10px 14px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .ad {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 10px;
+      }
+      .logs {
+        background: #0f172a;
+        color: #d7e2ff;
+        border-radius: 12px;
+        min-height: 120px;
+        max-height: 320px;
+        overflow: auto;
+        font-family: Consolas, monospace;
+        font-size: 12px;
+        padding: 10px;
+      }
+      .error {
+        color: var(--danger);
+      }
+      .city-list {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px;
+        max-height: 180px;
+        overflow: auto;
+        background: #fff;
+      }
+      .city-item {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 2px;
+      }
+      .section-toggle {
+        width: 100%;
+        text-align: left;
+      }
+      .collapsed {
+        display: none;
+      }
+      @media (max-width: 760px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Campanha Unica</h1>
+        <p>Preview de pasta no Drive, revisao de anuncios e envio para criacao no Meta.</p>
+        <div class="row" style="margin-top: 10px">
+          <a class="btn-link" href="/report.html">Abrir Relatorio por Cliente</a>
+        </div>
+        <p id="build_info" style="margin-top: 6px; font-size: 12px"></p>
+      </div>
+
+      <div class="card">
+        <button class="section-toggle" onclick="unToggleAccountsSection()">Cadastro de Contas de Anuncios (abrir/fechar)</button>
+        <div id="accounts_section" class="collapsed" style="margin-top: 12px">
+          <div class="row">
+            <input id="new_account_label" placeholder="Label (Ex.: 01 - Mistral)" style="flex:1" />
+            <input id="new_account_id" placeholder="Ad Account ID (sem act_)" style="flex:1" />
+            <input id="new_account_agency" placeholder="Agencia (Ex.: Mistral)" style="flex:1" />
+            <button onclick="unSaveAdAccount()">Salvar Conta</button>
+          </div>
+          <p id="accounts_msg" style="margin-top: 10px"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="section-toggle" onclick="unTogglePagesSection()">Cadastro de Paginas (abrir/fechar)</button>
+        <div id="pages_section" class="collapsed" style="margin-top: 12px">
+          <div class="row">
+            <select id="pages_ad_account_id">
+              <option value="">Conta de anuncios da pagina...</option>
+            </select>
+            <input id="new_page_id" placeholder="Page ID do Facebook" style="flex:1" />
+            <input id="new_page_cliente" placeholder="Nome do Cliente" style="flex:1" />
+            <button onclick="unEnrichSinglePage()">Cadastrar/Atualizar Pagina</button>
+            <button onclick="unEnrichAllPages()">Atualizar Todas as Paginas</button>
+          </div>
+          <p id="pages_msg" style="margin-top: 10px"></p>
+        </div>
+      </div>
+
+      <div class="card" id="tab-unica">
+        <div class="grid">
+          <div class="field">
+            <label>Conta de Anuncios</label>
+            <select id="ad_account_id" onchange="unFilterPagesByAccount()">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Pagina Facebook</label>
+            <select id="page_id" onchange="unUpdateWhatsappInfo()">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tipo de Campanha</label>
+            <select id="campaign_type" onchange="unToggleWhatsappPhone()">
+              <option value="whatsapp">whatsapp</option>
+              <option value="pixel">pixel</option>
+            </select>
+          </div>
+          <div class="field" id="whatsapp_phone_field" style="display:none">
+            <label>WhatsApp da Pagina</label>
+            <span id="whatsapp_phone_info" style="font-size:0.95em;color:#888">Selecione uma pagina.</span>
+          </div>
+          <div class="field">
+            <label>Nome do Cliente</label>
+            <input id="client_name" placeholder="Ex.: Mistral Web" />
+          </div>
+          <div class="field">
+            <label>Tipo de Investimento</label>
+            <select id="investment_type">
+              <option value="total" selected>Total</option>
+              <option value="daily">Diario</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Valor do Investimento</label>
+            <input id="investment_value" placeholder="Ex.: 250,00" />
+          </div>
+          <div class="field">
+            <label>Data de Termino</label>
+            <input id="end_date" type="date" />
+          </div>
+          <div class="field">
+            <label>Geo Target</label>
+            <select id="geo_key">
+              <option value="">Sem filtro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Sexo</label>
+            <select id="gender">
+              <option value="">Ambos</option>
+              <option value="1">Masculino</option>
+              <option value="2">Feminino</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Idade Minima</label>
+            <select id="age_min">
+              <option value="">Padrao (18)</option>
+              <option value="18">18</option>
+              <option value="21">21</option>
+              <option value="25">25</option>
+              <option value="30">30</option>
+              <option value="35">35</option>
+              <option value="40">40</option>
+              <option value="45">45</option>
+              <option value="50">50</option>
+              <option value="55">55</option>
+              <option value="60">60</option>
+              <option value="65">65</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Idade Maxima</label>
+            <select id="age_max">
+              <option value="">Padrao (65+)</option>
+              <option value="24">24</option>
+              <option value="29">29</option>
+              <option value="34">34</option>
+              <option value="39">39</option>
+              <option value="44">44</option>
+              <option value="49">49</option>
+              <option value="54">54</option>
+              <option value="59">59</option>
+              <option value="64">64</option>
+              <option value="65">65+</option>
+            </select>
+          </div>
+          <div class="field" style="grid-column: 1 / -1">
+            <label>Plataformas</label>
+            <div class="row">
+              <label><input type="checkbox" id="platform_facebook" checked /> Facebook</label>
+              <label><input type="checkbox" id="platform_instagram" checked /> Instagram</label>
+            </div>
+            <span style="font-size:0.85em;color:var(--muted)">Posicionamentos sao definidos automaticamente pelo Meta (Advantage+ Placements). Selecione ao menos uma plataforma.</span>
+          </div>
+        </div>
+        <div class="row" style="margin-top: 12px">
+          <button onclick="unToggleGeoSection()">Cadastrar Nova Cidade/Estado (abrir/fechar)</button>
+        </div>
+        <div id="geo_section" class="collapsed" style="margin-top: 12px">
+          <div class="grid">
+            <div class="field">
+              <label>Novo Geo Key</label>
+              <input id="geo_new_key" placeholder="ex: salvador_capital" />
+            </div>
+            <div class="field">
+              <label>Paises (CSV)</label>
+              <input id="geo_countries" value="BR" />
+            </div>
+            <div class="field">
+              <label>Raio (km, opcional)</label>
+              <input id="geo_radius_km" placeholder="ex: 30" />
+            </div>
+            <div class="field">
+              <label>Buscar Cidades (Meta)</label>
+              <input id="geo_city_query" placeholder="ex: Salvador" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button onclick="unSearchCities()">Pesquisar Cidades</button>
+            </div>
+            <div class="field" style="grid-column: 1 / -1">
+              <label>Cidades Selecionadas</label>
+              <div id="geo_city_list" class="city-list"></div>
+            </div>
+            <div class="field">
+              <label>Buscar Estados (Meta)</label>
+              <input id="geo_region_query" placeholder="ex: Bahia (vazio = listar todos)" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button onclick="unSearchRegions()">Pesquisar Estados</button>
+            </div>
+            <div class="field" style="grid-column: 1 / -1">
+              <label>Estados Selecionados</label>
+              <div id="geo_region_list" class="city-list"></div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px">
+            <button onclick="unSaveGeoTarget()">Salvar Geo Target</button>
+          </div>
+          <p id="geo_msg" style="margin-top: 10px"></p>
+        </div>
+        <p id="campaign_msg" style="margin-top: 10px"></p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top: 0">Arquivos da Pasta</h3>
+        <div class="field" style="margin-bottom: 10px">
+          <label>URL da Pasta (Google Drive ou Dropbox)</label>
+          <input id="folder_url" placeholder="https://drive.google.com/drive/folders/... ou https://www.dropbox.com/scl/fo/..." />
+        </div>
+        <div class="row" style="margin-bottom: 10px">
+          <button onclick="unAnalyzeFolder()">Analisar Pasta</button>
+        </div>
+        <p style="margin-bottom: 8px">Selecione arquivos encontrados na pasta para montar anuncios manualmente. Para Dropbox, use a URL de uma <strong>pasta</strong> compartilhada (nao de um arquivo).</p>
+        <div id="media_files"></div>
+        <div class="row" style="margin-top: 10px">
+          <button onclick="unAddSelectedFilesAsAds()">Adicionar Selecionados aos Ads</button>
+        </div>
+        <p id="files_msg" style="margin-top: 10px"></p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top: 0">Ads detectados</h3>
+        <div id="ads"></div>
+        <div class="row" style="margin-top: 12px">
+          <button onclick="unConfirmAndCreate()">Criar Campanha/Ads</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top: 0">Logs do Job</h3>
+        <div class="logs" id="logs"></div>
+      </div>
+    </div>
+
+    <script>
+      const unState = {
+        ads: [],
+        jobId: null,
+        adAccounts: [],
+        pages: [],
+        geos: [],
+        citySearchResults: [],
+        selectedCities: [],
+        regionSearchResults: [],
+        selectedRegions: [],
+        mediaFiles: [],
+        selectedFileIds: {},
+        fileTypeOverrides: {},
+      };
+
+      async function api(path, options = {}) {
+        const res = await fetch(path, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(window.APP_API_KEY ? { "x-api-key": window.APP_API_KEY } : {}),
+          },
+          ...options,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Erro na requisicao.");
+        return data;
+      }
+
+      async function unLoadVersion() {
+        try {
+          const data = await api("/api/version");
+          const el = document.getElementById("build_info");
+          el.textContent = `Build: ${data.version} | Meta API: ${data.meta_api_url}`;
+        } catch {
+          const el = document.getElementById("build_info");
+          el.textContent = "Build: indisponivel";
+        }
+      }
+
+      function setMsg(text, isError = false, targetId = "campaign_msg") {
+        const el = document.getElementById(targetId);
+        if (!el) return;
+        el.className = isError ? "error" : "";
+        el.textContent = text;
+      }
+
+      function unToggleAccountsSection() {
+        const el = document.getElementById("accounts_section");
+        el.classList.toggle("collapsed");
+      }
+
+      function unTogglePagesSection() {
+        const el = document.getElementById("pages_section");
+        el.classList.toggle("collapsed");
+      }
+
+      async function unSaveAdAccount() {
+        try {
+          const label = document.getElementById("new_account_label").value.trim();
+          const adAccountId = document.getElementById("new_account_id").value.trim().replace(/^act_/, "");
+          const agency = document.getElementById("new_account_agency").value.trim();
+          if (!adAccountId) throw new Error("Informe o Ad Account ID.");
+          if (!label) throw new Error("Informe o label da conta.");
+          setMsg("Salvando conta...", false, "accounts_msg");
+          await api("/api/ad-accounts/upsert", {
+            method: "POST",
+            body: JSON.stringify({ label, ad_account_id: adAccountId, agency, status: "active" }),
+          });
+          document.getElementById("new_account_label").value = "";
+          document.getElementById("new_account_id").value = "";
+          document.getElementById("new_account_agency").value = "";
+          await unLoadOptions();
+          setMsg(`Conta "${label}" salva com sucesso.`, false, "accounts_msg");
+        } catch (err) {
+          setMsg(err.message, true, "accounts_msg");
+        }
+      }
+
+      function unToggleGeoSection() {
+        const el = document.getElementById("geo_section");
+        el.classList.toggle("collapsed");
+      }
+
+      function unRemoveAd(idx) {
+        unState.ads.splice(idx, 1);
+        renderAds();
+      }
+
+      function renderAds() {
+        const root = document.getElementById("ads");
+        root.innerHTML = "";
+        if (!unState.ads.length) {
+          root.innerHTML = "<p>Nenhum anuncio detectado ainda.</p>";
+          return;
+        }
+
+        unState.ads.forEach((ad, idx) => {
+          const files = ad.files.map((f) => f.name).join(", ");
+          const div = document.createElement("div");
+          div.className = "ad";
+          div.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-weight:600;color:var(--muted);font-size:0.85em">Ad ${idx + 1}</span>
+              <button onclick="unRemoveAd(${idx})" style="background:var(--danger);padding:4px 10px;font-size:0.82em">Excluir</button>
+            </div>
+            <div class="grid">
+              <div class="field">
+                <label>Nome</label>
+                <input value="${ad.name}" onchange="unState.ads[${idx}].name=this.value" />
+              </div>
+              <div class="field">
+                <label>Tipo</label>
+                <input value="${ad.type}" disabled />
+              </div>
+              <div class="field" style="grid-column:1 / -1">
+                <label>Arquivos</label>
+                <input value="${files}" disabled />
+              </div>
+              <div class="field" style="grid-column:1 / -1">
+                <label>Texto</label>
+                <textarea onchange="unState.ads[${idx}].text=this.value">${ad.text || ""}</textarea>
+              </div>
+              <div class="field">
+                <label>Titulo</label>
+                <input value="${ad.title || ""}" onchange="unState.ads[${idx}].title=this.value" />
+              </div>
+              <div class="field">
+                <label>Descricao</label>
+                <input value="${ad.desc || ""}" onchange="unState.ads[${idx}].desc=this.value" />
+              </div>
+            </div>
+          `;
+          root.appendChild(div);
+        });
+      }
+
+      function baseName(fileName) {
+        return String(fileName || "")
+          .replace(/\.[^/.]+$/, "")
+          .replace(/_(feed|stories|video)$/i, "")
+          .trim();
+      }
+
+      function renderMediaFiles() {
+        const root = document.getElementById("media_files");
+        root.innerHTML = "";
+        if (!unState.mediaFiles.length) {
+          root.innerHTML = "<p>Nenhum arquivo de imagem/video encontrado na pasta.</p>";
+          return;
+        }
+
+        unState.mediaFiles.forEach((file, idx) => {
+          const wrap = document.createElement("div");
+          wrap.className = "ad";
+          const selected = Boolean(unState.selectedFileIds[file.id]);
+          const type = unState.fileTypeOverrides[file.id] || file.inferred_type || "feed";
+          wrap.innerHTML = `
+            <div class="row">
+              <label><input type="checkbox" ${selected ? "checked" : ""} onchange="unToggleFile('${file.id}', this.checked)" /> Selecionar</label>
+              <select onchange="unSetFileType('${file.id}', this.value)">
+                <option value="feed" ${type === "feed" ? "selected" : ""}>Imagem (Feed)</option>
+                <option value="video" ${type === "video" ? "selected" : ""}>Video</option>
+              </select>
+            </div>
+            <div><strong>${file.name}</strong></div>
+            <div style="color:#5a6275;font-size:12px">${file.mimeType || ""}</div>
+          `;
+          root.appendChild(wrap);
+        });
+      }
+
+      function unToggleFile(fileId, checked) {
+        unState.selectedFileIds[fileId] = checked;
+      }
+
+      function unSetFileType(fileId, type) {
+        unState.fileTypeOverrides[fileId] = type;
+      }
+
+      function unAddSelectedFilesAsAds() {
+        const selected = unState.mediaFiles.filter((f) => unState.selectedFileIds[f.id]);
+        if (!selected.length) {
+          setMsg("Selecione ao menos um arquivo para adicionar.", true, "files_msg");
+          return;
+        }
+
+        const existingFileIds = new Set(
+          unState.ads.flatMap((ad) => (ad.files || []).map((f) => String(f.id)))
+        );
+        let added = 0;
+        selected.forEach((file) => {
+          if (existingFileIds.has(String(file.id))) return;
+          const chosenType = unState.fileTypeOverrides[file.id] || file.inferred_type || "feed";
+          unState.ads.push({
+            name: baseName(file.name),
+            type: chosenType,
+            files: [file],
+            text: "",
+            title: "",
+            desc: "",
+          });
+          added += 1;
+        });
+
+        renderAds();
+        setMsg(
+          `${added} anuncio(s) adicionado(s) manualmente a partir dos arquivos da pasta.`,
+          false,
+          "files_msg"
+        );
+      }
+
+      async function unLoadOptions() {
+        try {
+          const data = await api("/api/setup/options");
+          unState.adAccounts = data.ad_accounts || [];
+          unState.pages = data.pages || [];
+          unState.geos = data.geos || [];
+
+          const adSel = document.getElementById("ad_account_id");
+          adSel.innerHTML = '<option value="">Selecione...</option>';
+          const pagesAdSel = document.getElementById("pages_ad_account_id");
+          pagesAdSel.innerHTML = '<option value="">Conta de anuncios da pagina...</option>';
+          unState.adAccounts.forEach((a) => {
+            const op = document.createElement("option");
+            op.value = a.ad_account_id || "";
+            op.textContent = `${a.label || a.ad_account_id} (${a.ad_account_id})`;
+            adSel.appendChild(op);
+
+            const op2 = document.createElement("option");
+            op2.value = a.ad_account_id || "";
+            op2.textContent = `${a.label || a.ad_account_id} (${a.ad_account_id})`;
+            pagesAdSel.appendChild(op2);
+          });
+
+          const geoSel = document.getElementById("geo_key");
+          geoSel.innerHTML = '<option value="">Sem filtro</option>';
+          unState.geos.forEach((g) => {
+            const op = document.createElement("option");
+            op.value = g.geo_key || "";
+            op.textContent = `${g.name || g.geo_key}`;
+            geoSel.appendChild(op);
+          });
+        } catch (e) {
+          setMsg(`Nao foi possivel carregar opcoes da planilha: ${e.message}`, true, "campaign_msg");
+        }
+      }
+
+      function renderCityResults() {
+        const root = document.getElementById("geo_city_list");
+        root.innerHTML = "";
+        if (!unState.citySearchResults.length) {
+          root.innerHTML = "<p>Nenhuma cidade carregada.</p>";
+          return;
+        }
+        unState.citySearchResults.forEach((c, idx) => {
+          const exists = unState.selectedCities.some((s) => String(s.key) === String(c.key));
+          const regionInfo = c.region ? `${c.region}${c.region_id ? ` [${c.region_id}]` : ""}` : "";
+          const row = document.createElement("label");
+          row.className = "city-item";
+          row.innerHTML = `
+            <input type="checkbox" ${exists ? "checked" : ""} onchange="unToggleCity(${idx}, this.checked)" />
+            <span>${c.name} - ${regionInfo} (${c.country_code || ""}) [${c.key}]</span>
+          `;
+          root.appendChild(row);
+        });
+      }
+
+      function unToggleCity(index, checked) {
+        const city = unState.citySearchResults[index];
+        if (!city) return;
+        if (checked) {
+          if (!unState.selectedCities.some((c) => String(c.key) === String(city.key))) {
+            unState.selectedCities.push(city);
+          }
+        } else {
+          unState.selectedCities = unState.selectedCities.filter((c) => String(c.key) !== String(city.key));
+        }
+      }
+
+      async function unSearchCities() {
+        try {
+          const q = document.getElementById("geo_city_query").value.trim();
+          if (!q) throw new Error("Informe um termo para busca de cidade.");
+          setMsg("Buscando cidades no Meta...", false, "geo_msg");
+          const data = await api(`/api/meta/geo/cities?q=${encodeURIComponent(q)}&country_code=BR&limit=25`);
+          unState.citySearchResults = data.cities || [];
+          renderCityResults();
+          setMsg(`${unState.citySearchResults.length} cidades encontradas para "${q}".`, false, "geo_msg");
+        } catch (err) {
+          setMsg(err.message, true, "geo_msg");
+        }
+      }
+
+      function renderRegionResults() {
+        const root = document.getElementById("geo_region_list");
+        root.innerHTML = "";
+        if (!unState.regionSearchResults.length) {
+          root.innerHTML = "<p>Nenhum estado carregado.</p>";
+          return;
+        }
+        unState.regionSearchResults.forEach((r, idx) => {
+          const exists = unState.selectedRegions.some((s) => String(s.key) === String(r.key));
+          const row = document.createElement("label");
+          row.className = "city-item";
+          row.innerHTML = `
+            <input type="checkbox" ${exists ? "checked" : ""} onchange="unToggleRegion(${idx}, this.checked)" />
+            <span>${r.name} (${r.country_code || ""}) [${r.key}]</span>
+          `;
+          root.appendChild(row);
+        });
+      }
+
+      function unToggleRegion(index, checked) {
+        const region = unState.regionSearchResults[index];
+        if (!region) return;
+        if (checked) {
+          if (!unState.selectedRegions.some((r) => String(r.key) === String(region.key))) {
+            unState.selectedRegions.push(region);
+          }
+        } else {
+          unState.selectedRegions = unState.selectedRegions.filter(
+            (r) => String(r.key) !== String(region.key)
+          );
+        }
+      }
+
+      async function unSearchRegions() {
+        try {
+          const q = document.getElementById("geo_region_query").value.trim();
+          setMsg("Buscando estados no Meta...", false, "geo_msg");
+          const url =
+            `/api/meta/geo/regions?country_code=BR&limit=100` +
+            (q ? `&q=${encodeURIComponent(q)}` : "");
+          const data = await api(url);
+          unState.regionSearchResults = data.regions || [];
+          renderRegionResults();
+          setMsg(
+            `${unState.regionSearchResults.length} estado(s) encontrado(s)${q ? ` para "${q}"` : ""}.`,
+            false,
+            "geo_msg"
+          );
+        } catch (err) {
+          setMsg(err.message, true, "geo_msg");
+        }
+      }
+
+      async function unSaveGeoTarget() {
+        try {
+          const geoKey = document.getElementById("geo_new_key").value.trim();
+          const countries = document.getElementById("geo_countries").value.trim();
+          const radiusKm = document.getElementById("geo_radius_km").value.trim();
+          if (!geoKey) throw new Error("Informe o Novo Geo Key.");
+          if (!unState.selectedCities.length && !unState.selectedRegions.length) {
+            throw new Error("Selecione ao menos uma cidade ou um estado.");
+          }
+
+          const regionKeySet = new Set(
+            unState.selectedRegions.map((r) => String(r.key || "").trim()).filter(Boolean)
+          );
+          const regionNameSet = new Set(
+            unState.selectedRegions
+              .map((r) => String(r.name || "").trim().toLowerCase())
+              .filter(Boolean)
+          );
+          const conflicts = unState.selectedCities.filter((c) => {
+            const rid = String(c.region_id || "").trim();
+            const rname = String(c.region || "").trim().toLowerCase();
+            return (rid && regionKeySet.has(rid)) || (rname && regionNameSet.has(rname));
+          });
+          if (conflicts.length) {
+            const list = conflicts
+              .map((c) => `${c.name} (${c.region || "-"})`)
+              .join(", ");
+            throw new Error(
+              `Conflito de geolocalizacao: as cidades [${list}] estao dentro de estados ja selecionados. ` +
+                "O Meta nao aceita sobreposicao. Remova a cidade OU o estado correspondente antes de salvar."
+            );
+          }
+
+          setMsg("Salvando Geo Target no banco...", false, "geo_msg");
+          await api("/api/geos/upsert", {
+            method: "POST",
+            body: JSON.stringify({
+              geo_key: geoKey,
+              name: geoKey,
+              countries: countries || "BR",
+              radius_km: radiusKm,
+              cities: unState.selectedCities.map((c) => ({
+                key: c.key,
+                name: c.name,
+                region: c.region || "",
+                region_id: c.region_id || "",
+                country: c.country_code || "BR",
+              })),
+              regions: unState.selectedRegions.map((r) => ({
+                key: r.key,
+                name: r.name,
+                country: r.country_code || "BR",
+              })),
+            }),
+          });
+          await unLoadOptions();
+          document.getElementById("geo_key").value = geoKey;
+          setMsg(`Geo Target ${geoKey} salvo com sucesso.`, false, "geo_msg");
+        } catch (err) {
+          setMsg(err.message, true, "geo_msg");
+        }
+      }
+
+      function unFilterPagesByAccount() {
+        const adAccount = document.getElementById("ad_account_id").value;
+        const pageSel = document.getElementById("page_id");
+        pageSel.innerHTML = '<option value="">Selecione...</option>';
+        unState.pages
+          .filter((p) => !adAccount || String(p.ad_account_id) === String(adAccount))
+          .forEach((p) => {
+            const op = document.createElement("option");
+            op.value = p.page_id || "";
+            const label = p.cliente ? `${p.cliente} - ${p.page_name || p.page_id}` : `${p.page_name || p.page_id}`;
+            op.textContent = `${label} (${p.page_id})`;
+            pageSel.appendChild(op);
+          });
+        unUpdateWhatsappInfo();
+      }
+
+      function unUpdateWhatsappInfo() {
+        const pageId = document.getElementById("page_id").value;
+        const page = unState.pages.find((p) => String(p.page_id) === String(pageId));
+        const el = document.getElementById("whatsapp_phone_info");
+        if (!el) return;
+        const num = page?.primary_whatsapp_phone_number || "";
+        el.textContent = num ? `WhatsApp vinculado: ${num}` : "Nenhum WhatsApp vinculado a esta pagina.";
+        el.style.color = num ? "#1a7a3c" : "#888";
+        const clientNameEl = document.getElementById("client_name");
+        if (clientNameEl && page?.cliente) clientNameEl.value = page.cliente;
+      }
+
+      async function unEnrichSinglePage() {
+        try {
+          const pageId = document.getElementById("new_page_id").value.trim();
+          const cliente = document.getElementById("new_page_cliente").value.trim();
+          const adAccountId =
+            document.getElementById("pages_ad_account_id").value.trim() ||
+            document.getElementById("ad_account_id").value.trim();
+          if (!pageId) throw new Error("Informe um page_id.");
+          setMsg("Buscando dados da pagina no Meta e gravando no banco...", false, "pages_msg");
+          const data = await api("/api/pages/enrich", {
+            method: "POST",
+            body: JSON.stringify({
+              page_id: pageId,
+              cliente,
+              ad_account_id: adAccountId,
+            }),
+          });
+          await unLoadOptions();
+          if (adAccountId) {
+            document.getElementById("ad_account_id").value = adAccountId;
+            document.getElementById("pages_ad_account_id").value = adAccountId;
+            unFilterPagesByAccount();
+          }
+          document.getElementById("page_id").value = pageId;
+          document.getElementById("new_page_id").value = "";
+          document.getElementById("new_page_cliente").value = "";
+          if (data.warning) {
+            setMsg(
+              `Pagina atualizada parcialmente. Aviso: ${data.warning}`,
+              true,
+              "pages_msg"
+            );
+          } else {
+            setMsg(
+              `Pagina ${data.page.page_name || pageId} atualizada com sucesso.`,
+              false,
+              "pages_msg"
+            );
+          }
+        } catch (err) {
+          setMsg(err.message, true, "pages_msg");
+        }
+      }
+
+      async function unEnrichAllPages() {
+        try {
+          setMsg("Atualizando todas as paginas cadastradas...", false, "pages_msg");
+          const data = await api("/api/pages/enrich", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          await unLoadOptions();
+          const ok = (data.results || []).filter((r) => r.ok).length;
+          const total = (data.results || []).length;
+          setMsg(`Atualizacao concluida: ${ok}/${total} paginas atualizadas.`, false, "pages_msg");
+        } catch (err) {
+          setMsg(err.message, true, "pages_msg");
+        }
+      }
+
+      async function unAnalyzeFolder() {
+        try {
+          setMsg("Analisando pasta...", false, "files_msg");
+          const folder_url = document.getElementById("folder_url").value.trim();
+          const data = await api("/api/preview-folder", {
+            method: "POST",
+            body: JSON.stringify({ folder_url }),
+          });
+          unState.ads = data.ads || [];
+          unState.mediaFiles = data.media_files || [];
+          unState.selectedFileIds = {};
+          unState.fileTypeOverrides = {};
+          unState.mediaFiles.forEach((f) => {
+            unState.fileTypeOverrides[f.id] = f.inferred_type || "feed";
+          });
+          renderAds();
+          renderMediaFiles();
+          const ungrouped = (data.ungrouped_media_files || []).length;
+          setMsg(
+            `Preview pronto: ${unState.ads.length} ads detectados por nomenclatura em ${data.total_files} arquivo(s). ${ungrouped} arquivo(s) de midia podem ser adicionados manualmente abaixo.`,
+            false,
+            "files_msg"
+          );
+        } catch (err) {
+          setMsg(err.message, true, "files_msg");
+        }
+      }
+
+      async function unConfirmAndCreate() {
+        try {
+          if (!unState.ads.length) {
+            throw new Error("Analise a pasta primeiro.");
+          }
+          const filesByName = new Map(
+            (unState.mediaFiles || []).map((f) => [String(f.name || "").trim(), f])
+          );
+          const adsNormalized = (unState.ads || []).map((ad) => ({
+            ...ad,
+            files: (ad.files || [])
+              .map((f) => {
+                if (f && typeof f === "object" && f.id) return f;
+                const fileName =
+                  typeof f === "string"
+                    ? f
+                    : f && typeof f === "object"
+                      ? String(f.name || "")
+                      : "";
+                return filesByName.get(fileName.trim()) || f;
+              })
+              .filter(Boolean),
+          }));
+
+          const platforms = ["facebook", "instagram"].filter((p) => {
+            const el = document.getElementById(`platform_${p}`);
+            return el && el.checked;
+          });
+          if (!platforms.length) {
+            throw new Error("Selecione ao menos uma plataforma (Facebook ou Instagram).");
+          }
+
+          setMsg("Iniciando job de criacao...", false, "campaign_msg");
+          const payload = {
+            folder_url: document.getElementById("folder_url").value.trim(),
+            ad_account_id: document.getElementById("ad_account_id").value,
+            page_id: document.getElementById("page_id").value,
+            geo_key: document.getElementById("geo_key").value,
+            campaign_type: document.getElementById("campaign_type").value,
+            client_name: document.getElementById("client_name").value.trim(),
+            investment_type: document.getElementById("investment_type").value,
+            investment_value: document.getElementById("investment_value").value.trim(),
+            end_date: document.getElementById("end_date").value,
+            gender: document.getElementById("gender").value || "",
+            age_min: document.getElementById("age_min").value || "",
+            age_max: document.getElementById("age_max").value || "",
+            platforms,
+            ads: adsNormalized,
+          };
+          const data = await api("/api/run-folder-job", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          unState.jobId = data.jobId;
+          await unPollStatus();
+        } catch (err) {
+          setMsg(err.message, true, "campaign_msg");
+        }
+      }
+
+      async function unPollStatus() {
+        const logs = document.getElementById("logs");
+        while (unState.jobId) {
+          const data = await api(`/api/campaigns/status/${unState.jobId}`);
+          logs.textContent = (data.logs || [])
+            .map((l) => `[${l.ts}] [${l.level.toUpperCase()}] ${l.msg}`)
+            .join("\n");
+          logs.scrollTop = logs.scrollHeight;
+          if (data.done) {
+            setMsg(
+              data.status === "completed"
+                ? "Job finalizado com sucesso."
+                : `Job com erro: ${data.error || "ver logs"}`,
+              data.status !== "completed",
+              "campaign_msg"
+            );
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+      }
+
+      renderAds();
+      renderMediaFiles();
+      function unToggleWhatsappPhone() {
+        // campo WhatsApp da Pagina oculto temporariamente
+      }
+
+      unLoadVersion();
+      unLoadOptions();
+      unToggleWhatsappPhone();
+    </script>
+  </body>
+</html>
