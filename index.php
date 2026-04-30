@@ -47,7 +47,15 @@ try {
 // Build Slim app
 $app = Bridge::create($container);
 $app->addBodyParsingMiddleware();
-$app->addErrorMiddleware(false, false, false);
+
+$errorMiddleware = $app->addErrorMiddleware(false, false, false);
+$errorMiddleware->setDefaultErrorHandler(
+    function (\Psr\Http\Message\ServerRequestInterface $req, \Throwable $e) use ($app) {
+        $res = $app->getResponseFactory()->createResponse(500);
+        $res->getBody()->write(json_encode(['error' => $e->getMessage()]));
+        return $res->withHeader('Content-Type', 'application/json');
+    }
+);
 
 // ── Public routes ──────────────────────────────────────────────────────────
 $app->get('/api/version', VersionHandler::class);
