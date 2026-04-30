@@ -35,7 +35,14 @@ foreach (Container::definitions() as $id => $def) {
 }
 
 // Run DB migrations
-(new DatabaseMigrator())->migrate($container->get(PDO::class));
+try {
+    (new DatabaseMigrator())->migrate($container->get(PDO::class));
+} catch (\Throwable $e) {
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Database unavailable: ' . $e->getMessage()]);
+    exit;
+}
 
 // Build Slim app
 $app = Bridge::create($container);
