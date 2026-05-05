@@ -23,6 +23,28 @@ use Slim\Routing\RouteCollectorProxy;
 
 require __DIR__ . '/vendor/autoload.php';
 
+// Convert PHP warnings/notices to exceptions so Slim can render them as JSON
+set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
+    if (!(error_reporting() & $severity)) {
+        return false;
+    }
+    throw new \ErrorException($message, 0, $severity, $file, $line);
+});
+
+// Catch fatal errors (parse errors, memory exhaustion) and emit JSON instead of empty body
+register_shutdown_function(function (): void {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+        }
+        echo json_encode([
+            'error' => sprintf('Fatal: %s in %s:%d', $err['message'], $err['file'], $err['line']),
+        ]);
+    }
+});
+
 // Load environment
 if (file_exists(__DIR__ . '/.env')) {
     Dotenv::createImmutable(__DIR__)->load();
@@ -48,11 +70,15 @@ try {
 $app = Bridge::create($container);
 $app->addBodyParsingMiddleware();
 
-$errorMiddleware = $app->addErrorMiddleware(false, false, false);
+$errorMiddleware = $app->addErrorMiddleware(true, true, true);
 $errorMiddleware->setDefaultErrorHandler(
     function (\Psr\Http\Message\ServerRequestInterface $req, \Throwable $e) use ($app) {
         $res = $app->getResponseFactory()->createResponse(500);
-        $res->getBody()->write(json_encode(['error' => $e->getMessage()]));
+        $res->getBody()->write(json_encode([
+            'error' => $e->getMessage(),
+            'type'  => get_class($e),
+            'file'  => $e->getFile() . ':' . $e->getLine(),
+        ]));
         return $res->withHeader('Content-Type', 'application/json');
     }
 );
