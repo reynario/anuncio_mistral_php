@@ -51,10 +51,9 @@ if (file_exists(__DIR__ . '/.env')) {
 }
 
 // Build DI container
-$container = \DI\ContainerBuilder::buildDevContainer();
-foreach (Container::definitions() as $id => $def) {
-    $container->set($id, $def);
-}
+$builder = new \DI\ContainerBuilder();
+$builder->addDefinitions(Container::definitions());
+$container = $builder->build();
 
 // Run DB migrations
 try {
