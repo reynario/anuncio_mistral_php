@@ -112,6 +112,61 @@
         font-size: 12px;
         padding: 10px;
       }
+      /* ── Painel de execução estilo terminal ──────── */
+      #progress-panel {
+        display: none;
+        background: #1c2128;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        margin-bottom: 16px;
+        overflow: hidden;
+      }
+      #progress-panel .pp-header {
+        padding: 14px 18px;
+        border-bottom: 1px solid #30363d;
+        font-weight: 600;
+        font-size: 13px;
+        color: #8b949e;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #progress-panel .pp-header .pp-title {
+        flex: 0 0 auto;
+      }
+      #progress-panel .pp-header .pp-badge {
+        margin-left: auto;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #e3b341;
+        color: #1c2128;
+      }
+      #progress-panel .pp-badge.ok    { background: #2ea043; color: #fff; }
+      #progress-panel .pp-badge.err   { background: #f85149; color: #fff; }
+      #progress-panel .pp-body {
+        padding: 14px 18px;
+      }
+      #log-box {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-family: "Courier New", Consolas, monospace;
+        font-size: 12.5px;
+        line-height: 1.7;
+        max-height: 380px;
+        overflow-y: auto;
+        color: #e6edf3;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      #log-box .log-line { display: block; }
+      #log-box .log-ts   { color: #8b949e; margin-right: 6px; }
+      #log-box .log-info  { color: #e6edf3; }
+      #log-box .log-warn  { color: #e3b341; }
+      #log-box .log-error { color: #f85149; }
       .error {
         color: var(--danger);
       }
@@ -358,9 +413,14 @@
         </div>
       </div>
 
-      <div class="card">
-        <h3 style="margin-top: 0">Logs do Job</h3>
-        <div class="logs" id="logs"></div>
+      <div id="progress-panel">
+        <div class="pp-header">
+          <span class="pp-title">⌨ Log de Execucao</span>
+          <span id="statusBadge" class="pp-badge">Em andamento...</span>
+        </div>
+        <div class="pp-body">
+          <div id="log-box"></div>
+        </div>
       </div>
     </div>
 
@@ -924,6 +984,16 @@
           }
 
           setMsg("Iniciando job de criacao...", false, "campaign_msg");
+
+          // Reset and show the execution panel
+          const panel = document.getElementById("progress-panel");
+          panel.style.display = "block";
+          document.getElementById("log-box").innerHTML = "";
+          const badge = document.getElementById("statusBadge");
+          badge.textContent = "Em andamento...";
+          badge.className = "pp-badge";
+          panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
           const payload = {
             folder_url: document.getElementById("folder_url").value.trim(),
             ad_account_id: document.getElementById("ad_account_id").value,
@@ -951,15 +1021,44 @@
         }
       }
 
+      function appendLogLines(box, logs, fromIndex) {
+        const frag = document.createDocumentFragment();
+        for (let i = fromIndex; i < logs.length; i++) {
+          const l = logs[i] || {};
+          const level = String(l.level || "info").toLowerCase();
+          const ts = String(l.ts || "").replace("T", " ").slice(11, 19) || "";
+          const line = document.createElement("div");
+          line.className = "log-line log-" + (level === "warn" || level === "warning" ? "warn" : level === "error" ? "error" : "info");
+          const tsSpan = document.createElement("span");
+          tsSpan.className = "log-ts";
+          tsSpan.textContent = ts ? "[" + ts + "]" : "";
+          line.appendChild(tsSpan);
+          line.appendChild(document.createTextNode(" " + (l.msg || "")));
+          frag.appendChild(line);
+        }
+        box.appendChild(frag);
+      }
+
       async function unPollStatus() {
-        const logs = document.getElementById("logs");
+        const box = document.getElementById("log-box");
+        const badge = document.getElementById("statusBadge");
+        let lastCount = 0;
         while (unState.jobId) {
           const data = await api(`/api/campaigns/status/${unState.jobId}`);
-          logs.textContent = (data.logs || [])
-            .map((l) => `[${l.ts}] [${l.level.toUpperCase()}] ${l.msg}`)
-            .join("\n");
-          logs.scrollTop = logs.scrollHeight;
+          const logs = data.logs || [];
+          if (logs.length > lastCount) {
+            appendLogLines(box, logs, lastCount);
+            lastCount = logs.length;
+            box.scrollTop = box.scrollHeight;
+          }
           if (data.done) {
+            if (data.status === "completed") {
+              badge.textContent = "✅ Concluido";
+              badge.className = "pp-badge ok";
+            } else {
+              badge.textContent = "❌ Erro";
+              badge.className = "pp-badge err";
+            }
             setMsg(
               data.status === "completed"
                 ? "Job finalizado com sucesso."
@@ -969,7 +1068,7 @@
             );
             break;
           }
-          await new Promise((r) => setTimeout(r, 3000));
+          await new Promise((r) => setTimeout(r, 1500));
         }
       }
 
