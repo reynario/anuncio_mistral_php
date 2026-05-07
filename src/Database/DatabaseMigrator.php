@@ -76,7 +76,7 @@ class DatabaseMigrator
               id           VARCHAR(36)  PRIMARY KEY,
               status       VARCHAR(20)  NOT NULL DEFAULT 'pending',
               payload_json TEXT         NOT NULL,
-              logs_json    MEDIUMTEXT   NOT NULL DEFAULT '[]',
+              logs_json    MEDIUMTEXT   NOT NULL,
               error        TEXT,
               done         TINYINT(1)   NOT NULL DEFAULT 0,
               created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
