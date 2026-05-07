@@ -700,14 +700,18 @@
       });
 
       async function toggleCampaignAds(btn) {
+        console.log("[ads] toggle clicked", btn);
         const cid = btn.dataset.campaignId;
-        if (!cid) { console.warn("toggle without campaignId"); return; }
-        const tbody = document.getElementById("campaign_rows");
+        console.log("[ads] campaignId =", cid);
+        if (!cid) { alert("Sem campaignId no botao"); return; }
+
         const parentRow = btn.closest("tr");
-        if (!parentRow) { console.warn("parent row not found"); return; }
+        if (!parentRow) { alert("Linha pai nao encontrada"); return; }
+        const tbody = parentRow.parentNode;
 
         const existing = tbody.querySelector(`tr.ads-row[data-parent-id="${cid}"]`);
         if (existing) {
+          console.log("[ads] removing existing row");
           existing.remove();
           btn.textContent = "▶";
           return;
@@ -716,21 +720,25 @@
         btn.textContent = "▼";
         const adsRow = document.createElement("tr");
         adsRow.className = "ads-row";
-        adsRow.dataset.parentId = cid;
-        adsRow.innerHTML = `<td colspan="9" style="background:#f9fbff;padding:12px"><div style="color:var(--muted);font-size:13px">Carregando anuncios...</div></td>`;
-        parentRow.parentNode.insertBefore(adsRow, parentRow.nextSibling);
+        adsRow.setAttribute("data-parent-id", cid);
+        adsRow.innerHTML = '<td colspan="9" style="background:#f9fbff;padding:12px"><div style="color:#5a6275;font-size:13px">Carregando anuncios...</div></td>';
+        parentRow.insertAdjacentElement("afterend", adsRow);
+        console.log("[ads] row inserted, fetching...");
 
         try {
           let data = adsCache[cid];
           if (!data) {
-            data = await api(`/api/campaigns/${cid}/ads`);
+            const url = "/api/campaigns/" + cid + "/ads";
+            console.log("[ads] GET", url);
+            data = await api(url);
+            console.log("[ads] response", data);
             adsCache[cid] = data;
           }
           renderAdsRow(adsRow, data.ads || []);
         } catch (err) {
-          console.error("ads fetch failed", err);
+          console.error("[ads] fetch failed", err);
           const div = adsRow.querySelector("td > div");
-          if (div) div.innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
+          if (div) div.innerHTML = '<span style="color:#b00020">Erro: ' + (err.message || err) + '</span>';
         }
       }
 
