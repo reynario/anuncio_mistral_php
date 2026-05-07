@@ -17,8 +17,8 @@ use App\Handlers\RunFolderJobHandler;
 use App\Handlers\SetupOptionsHandler;
 use App\Handlers\VersionHandler;
 use App\Middleware\AuthMiddleware;
-use DI\Bridge\Slim\Bridge;
 use Dotenv\Dotenv;
+use Slim\Factory\AppFactory;
 use Slim\Routing\RouteCollectorProxy;
 
 require __DIR__ . '/vendor/autoload.php';
@@ -66,7 +66,8 @@ try {
 }
 
 // Build Slim app
-$app = Bridge::create($container);
+AppFactory::setContainer($container);
+$app = AppFactory::create();
 $app->addBodyParsingMiddleware();
 
 $errorMiddleware = $app->addErrorMiddleware(true, true, true);
