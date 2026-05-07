@@ -33,29 +33,38 @@ class AppConfig
 
     public function __construct()
     {
-        $this->port               = $_ENV['PORT'] ?? '8787';
-        $this->appApiKey          = $_ENV['APP_API_KEY'] ?? '';
-        $this->buildVersion       = $_ENV['APP_BUILD_VERSION'] ?? ('php-' . date('YmdHis'));
+        $this->port               = self::env('PORT', '8787');
+        $this->appApiKey          = self::env('APP_API_KEY');
+        $this->buildVersion       = self::env('APP_BUILD_VERSION', 'php-' . date('YmdHis'));
 
-        $this->metaApiUrl         = $_ENV['META_API_URL'] ?? 'https://graph.facebook.com/v25.0';
-        $this->metaAccessToken    = $_ENV['META_ACCESS_TOKEN'] ?? '';
-        $this->defaultDestinationUrl = $_ENV['DEFAULT_DESTINATION_URL'] ?? 'https://example.com';
+        $this->metaApiUrl         = self::env('META_API_URL', 'https://graph.facebook.com/v25.0');
+        $this->metaAccessToken    = self::env('META_ACCESS_TOKEN');
+        $this->defaultDestinationUrl = self::env('DEFAULT_DESTINATION_URL', 'https://example.com');
 
-        $this->googleClientId     = $_ENV['GOOGLE_OAUTH_CLIENT_ID'] ?? '';
-        $this->googleClientSecret = $_ENV['GOOGLE_OAUTH_CLIENT_SECRET'] ?? '';
-        $this->googleRedirectUri  = $_ENV['GOOGLE_OAUTH_REDIRECT_URI'] ?? "http://localhost:{$this->port}/api/google/oauth/callback";
-        $this->googleRefreshToken = $_ENV['GOOGLE_OAUTH_REFRESH_TOKEN'] ?? '';
+        $this->googleClientId     = self::env('GOOGLE_OAUTH_CLIENT_ID');
+        $this->googleClientSecret = self::env('GOOGLE_OAUTH_CLIENT_SECRET');
+        $this->googleRedirectUri  = self::env('GOOGLE_OAUTH_REDIRECT_URI', "http://localhost:{$this->port}/api/google/oauth/callback");
+        $this->googleRefreshToken = self::env('GOOGLE_OAUTH_REFRESH_TOKEN');
 
-        $this->dropboxAccessToken = $_ENV['DROPBOX_ACCESS_TOKEN'] ?? '';
-        $this->dropboxAppKey      = $_ENV['DROPBOX_APP_KEY'] ?? '';
-        $this->dropboxAppSecret   = $_ENV['DROPBOX_APP_SECRET'] ?? '';
-        $this->dropboxRedirectUri = $_ENV['DROPBOX_OAUTH_REDIRECT_URI'] ?? "http://localhost:{$this->port}/api/dropbox/oauth/callback";
-        $this->dropboxRefreshToken = $_ENV['DROPBOX_REFRESH_TOKEN'] ?? '';
+        $this->dropboxAccessToken = self::env('DROPBOX_ACCESS_TOKEN');
+        $this->dropboxAppKey      = self::env('DROPBOX_APP_KEY');
+        $this->dropboxAppSecret   = self::env('DROPBOX_APP_SECRET');
+        $this->dropboxRedirectUri = self::env('DROPBOX_OAUTH_REDIRECT_URI', "http://localhost:{$this->port}/api/dropbox/oauth/callback");
+        $this->dropboxRefreshToken = self::env('DROPBOX_REFRESH_TOKEN');
 
-        $this->dbHost     = $_ENV['DB_HOST'] ?? 'localhost';
-        $this->dbPort     = (int) ($_ENV['DB_PORT'] ?? 3306);
-        $this->dbUser     = $_ENV['DB_USER'] ?? '';
-        $this->dbPassword = $_ENV['DB_PASSWORD'] ?? '';
-        $this->dbName     = $_ENV['DB_NAME'] ?? 'anuncios_meta_mistral';
+        $this->dbHost     = self::env('DB_HOST', 'localhost');
+        $this->dbPort     = (int) self::env('DB_PORT', '3306');
+        $this->dbUser     = self::env('DB_USER');
+        $this->dbPassword = self::env('DB_PASSWORD');
+        $this->dbName     = self::env('DB_NAME', 'anuncios_meta_mistral');
+    }
+
+    private static function env(string $key, string $default = ''): string
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+        if ($value === false || $value === null || $value === '') {
+            return $default;
+        }
+        return (string) $value;
     }
 }
