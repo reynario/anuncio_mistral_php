@@ -49,7 +49,6 @@ class ReportHandler
                 'time_range'   => json_encode(['since' => $dateFrom, 'until' => $dateTo]),
                 'level'        => 'campaign',
                 'limit'        => 500,
-                'date_preset'  => 'custom',
             ];
 
             $data     = $this->meta->request("/act_{$adAccountId}/insights", 'GET', $insightParams);
