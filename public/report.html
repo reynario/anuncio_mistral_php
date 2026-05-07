@@ -315,6 +315,7 @@
           <table>
             <thead>
               <tr>
+                <th style="width:32px"></th>
                 <th>Campanha</th>
                 <th>Impressoes</th>
                 <th>Alcance</th>
@@ -600,10 +601,12 @@
       function renderDowCharts(r,m) { buildDonut("chart_dow_reach",r||[]); buildDonut("chart_dow_msg",m||[]); }
 
       /* ── Campaigns table ─────────────────────────── */
+      const adsCache = {};
+
       function renderCampaigns(campaigns) {
         const tbody = document.getElementById("campaign_rows");
         if (!campaigns.length) {
-          tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Sem campanhas no periodo.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Sem campanhas no periodo.</td></tr>';
           return;
         }
         const maxImp   = Math.max(1,...campaigns.map(c=>toNum(c.impressions)));
@@ -614,8 +617,12 @@
             const convs = toNum(c.conversations_started||0);
             const spend = toNum(c.spend);
             const cpc = convs > 0 ? spend / convs : null;
-            return `<tr>
-            <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.campaign_name||c.campaign_id||"-"}</td>
+            const cid = c.campaign_id || "";
+            return `<tr data-campaign-id="${cid}">
+            <td style="text-align:center">
+              <button type="button" class="ads-toggle" data-campaign-id="${cid}" style="background:none;border:1px solid var(--line);border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px" title="Ver anuncios">▶</button>
+            </td>
+            <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.campaign_name||cid||"-"}</td>
             <td>
               <span class="val-mono">${fmtInt(c.impressions)}</span>
               <div class="bar"><span style="width:${(toNum(c.impressions)/maxImp)*100}%;background:#2563eb"></span></div>
@@ -631,6 +638,68 @@
             <td><span class="val-mono">${cpc !== null ? fmtMoney(cpc) : "-"}</span></td>
           </tr>`;
           }).join("");
+
+        tbody.querySelectorAll(".ads-toggle").forEach(btn => {
+          btn.addEventListener("click", () => toggleCampaignAds(btn));
+        });
+      }
+
+      async function toggleCampaignAds(btn) {
+        const cid = btn.dataset.campaignId;
+        if (!cid) return;
+        const tbody = document.getElementById("campaign_rows");
+        const parentRow = btn.closest("tr");
+        const existing = tbody.querySelector(`tr.ads-row[data-parent-id="${cid}"]`);
+        if (existing) {
+          existing.remove();
+          btn.textContent = "▶";
+          return;
+        }
+
+        btn.textContent = "▼";
+        const adsRow = document.createElement("tr");
+        adsRow.className = "ads-row";
+        adsRow.dataset.parentId = cid;
+        adsRow.innerHTML = `<td colspan="9" style="background:#f9fbff;padding:12px"><div style="color:var(--muted);font-size:13px">Carregando anuncios...</div></td>`;
+        parentRow.after(adsRow);
+
+        try {
+          let data = adsCache[cid];
+          if (!data) {
+            data = await api(`/api/campaigns/${cid}/ads`);
+            adsCache[cid] = data;
+          }
+          renderAdsRow(adsRow, data.ads || []);
+        } catch (err) {
+          adsRow.querySelector("td > div").innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
+        }
+      }
+
+      function renderAdsRow(adsRow, ads) {
+        if (!ads.length) {
+          adsRow.querySelector("td > div").innerHTML = '<span style="color:var(--muted)">Nenhum anuncio encontrado.</span>';
+          return;
+        }
+        const cells = ads.map(a => {
+          const img = a.image_url
+            ? `<img src="${a.image_url}" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" />`
+            : `<div style="width:120px;height:120px;background:#eef2f9;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">sem imagem</div>`;
+          const link = a.link
+            ? `<a href="${a.link}" target="_blank" rel="noopener" style="color:var(--primary);font-size:12px;word-break:break-all">${a.link}</a>`
+            : (a.instagram_permalink
+                ? `<a href="${a.instagram_permalink}" target="_blank" rel="noopener" style="color:var(--primary);font-size:12px">Ver no Instagram</a>`
+                : `<span style="color:var(--muted);font-size:12px">sem link</span>`);
+          const status = a.status === "ACTIVE"
+            ? `<span style="color:#059669;font-size:11px;font-weight:600">ATIVO</span>`
+            : `<span style="color:var(--muted);font-size:11px">${a.status||""}</span>`;
+          return `<div style="display:flex;flex-direction:column;gap:6px;width:160px">
+            ${img}
+            <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.name||""}">${a.name||"-"}</div>
+            ${status}
+            ${link}
+          </div>`;
+        }).join("");
+        adsRow.querySelector("td").innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:14px;padding:4px 0">${cells}</div>`;
       }
 
       /* ── Boot ────────────────────────────────────── */

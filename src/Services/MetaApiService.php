@@ -113,6 +113,21 @@ class MetaApiService
         ]);
     }
 
+    public function fetchCampaignAds(string $campaignId): array
+    {
+        $fields = implode(',', [
+            'id',
+            'name',
+            'status',
+            'creative{id,name,thumbnail_url,image_url,object_story_spec,effective_object_story_id,instagram_permalink_url}',
+        ]);
+        $data = $this->request("/{$campaignId}/ads", 'GET', [
+            'fields' => $fields,
+            'limit'  => 50,
+        ]);
+        return $data['data'] ?? [];
+    }
+
     public function fetchAdAccountInstagramActors(string $adAccount): ?array
     {
         $data = $this->requestSafe("/act_{$adAccount}", ['fields' => 'instagram_accounts{id,username}']);

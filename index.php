@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\App\Container;
 use App\Database\DatabaseMigrator;
 use App\Handlers\AdAccountsHandler;
+use App\Handlers\CampaignAdsHandler;
 use App\Handlers\CampaignStatusHandler;
 use App\Handlers\DropboxOAuthHandler;
 use App\Handlers\GeosHandler;
@@ -120,6 +121,7 @@ $app->group('', function (RouteCollectorProxy $group) use ($container) {
     $group->post('/api/geos/upsert',             GeosHandler::class);
 
     $group->get('/api/campaigns/status/{jobId}', CampaignStatusHandler::class);
+    $group->get('/api/campaigns/{campaignId}/ads', CampaignAdsHandler::class);
 
     $group->post('/api/preview-folder',          PreviewFolderHandler::class);
     $group->post('/api/run-folder-job',          RunFolderJobHandler::class);
