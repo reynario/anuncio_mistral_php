@@ -10,7 +10,8 @@ RUN apk add --no-cache nginx supervisor curl \
     && echo "apc.enable_cli=1" >> /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini \
     && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/zz-memory.ini \
     && echo "display_errors=Off" >> /usr/local/etc/php/conf.d/zz-memory.ini \
-    && echo "log_errors=On" >> /usr/local/etc/php/conf.d/zz-memory.ini
+    && echo "log_errors=On" >> /usr/local/etc/php/conf.d/zz-memory.ini \
+    && echo "variables_order=EGPCS" >> /usr/local/etc/php/conf.d/zz-memory.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
