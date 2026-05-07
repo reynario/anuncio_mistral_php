@@ -18,6 +18,8 @@ use App\Services\MetaApiService;
 use GuzzleHttp\Client;
 use PDO;
 use PDOException;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Slim\Psr7\Factory\ResponseFactory;
 use function DI\autowire;
 use function DI\create;
 use function DI\get;
@@ -28,6 +30,8 @@ class Container
     {
         return [
             AppConfig::class => create(AppConfig::class),
+
+            ResponseFactoryInterface::class => create(ResponseFactory::class),
 
             PDO::class => function (AppConfig $config): PDO {
                 $dsn = sprintf(
