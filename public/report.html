@@ -721,9 +721,10 @@
         const adsRow = document.createElement("tr");
         adsRow.className = "ads-row";
         adsRow.setAttribute("data-parent-id", cid);
-        adsRow.innerHTML = '<td colspan="9" style="background:#f9fbff;padding:12px"><div style="color:#5a6275;font-size:13px">Carregando anuncios...</div></td>';
+        adsRow.innerHTML = '<td colspan="9" style="background:#eef4ff;padding:16px;border-left:4px solid #1f5eff;border-bottom:2px solid #1f5eff"><div class="ads-content" style="color:#131722;font-size:13px;font-weight:600">⏳ Carregando anuncios...</div></td>';
         parentRow.insertAdjacentElement("afterend", adsRow);
         console.log("[ads] row inserted, fetching...");
+        adsRow.scrollIntoView({behavior: "smooth", block: "nearest"});
 
         try {
           let data = adsCache[cid];
@@ -731,42 +732,45 @@
             const url = "/api/campaigns/" + cid + "/ads";
             console.log("[ads] GET", url);
             data = await api(url);
-            console.log("[ads] response", data);
+            console.log("[ads] response", data, "ads count =", (data.ads||[]).length);
             adsCache[cid] = data;
+          } else {
+            console.log("[ads] using cached data, ads count =", (data.ads||[]).length);
           }
           renderAdsRow(adsRow, data.ads || []);
         } catch (err) {
           console.error("[ads] fetch failed", err);
-          const div = adsRow.querySelector("td > div");
+          const div = adsRow.querySelector(".ads-content");
           if (div) div.innerHTML = '<span style="color:#b00020">Erro: ' + (err.message || err) + '</span>';
         }
       }
 
       function renderAdsRow(adsRow, ads) {
+        const td = adsRow.querySelector("td");
         if (!ads.length) {
-          adsRow.querySelector("td > div").innerHTML = '<span style="color:var(--muted)">Nenhum anuncio encontrado.</span>';
+          td.innerHTML = '<div class="ads-content" style="color:#5a6275;font-size:14px;text-align:center;padding:8px">Nenhum anuncio encontrado para esta campanha.</div>';
           return;
         }
         const cells = ads.map(a => {
           const img = a.image_url
-            ? `<img src="${a.image_url}" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" />`
-            : `<div style="width:120px;height:120px;background:#eef2f9;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">sem imagem</div>`;
+            ? `<img src="${a.image_url}" alt="" style="width:140px;height:140px;object-fit:cover;border-radius:8px;border:1px solid #dce2ef;background:#fff" />`
+            : `<div style="width:140px;height:140px;background:#eef2f9;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#5a6275;font-size:12px">sem imagem</div>`;
           const link = a.link
-            ? `<a href="${a.link}" target="_blank" rel="noopener" style="color:var(--primary);font-size:12px;word-break:break-all">${a.link}</a>`
+            ? `<a href="${a.link}" target="_blank" rel="noopener" style="color:#1f5eff;font-size:12px;word-break:break-all;text-decoration:none">${a.link}</a>`
             : (a.instagram_permalink
-                ? `<a href="${a.instagram_permalink}" target="_blank" rel="noopener" style="color:var(--primary);font-size:12px">Ver no Instagram</a>`
-                : `<span style="color:var(--muted);font-size:12px">sem link</span>`);
+                ? `<a href="${a.instagram_permalink}" target="_blank" rel="noopener" style="color:#1f5eff;font-size:12px">Ver no Instagram</a>`
+                : `<span style="color:#5a6275;font-size:12px">sem link</span>`);
           const status = a.status === "ACTIVE"
-            ? `<span style="color:#059669;font-size:11px;font-weight:600">ATIVO</span>`
-            : `<span style="color:var(--muted);font-size:11px">${a.status||""}</span>`;
-          return `<div style="display:flex;flex-direction:column;gap:6px;width:160px">
+            ? `<span style="color:#059669;font-size:11px;font-weight:600">● ATIVO</span>`
+            : `<span style="color:#5a6275;font-size:11px">${a.status||""}</span>`;
+          return `<div style="display:flex;flex-direction:column;gap:6px;width:180px;background:#fff;padding:10px;border-radius:8px;border:1px solid #dce2ef">
             ${img}
-            <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.name||""}">${a.name||"-"}</div>
+            <div style="font-size:12px;font-weight:600;color:#131722;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.name||""}">${a.name||"-"}</div>
             ${status}
             ${link}
           </div>`;
         }).join("");
-        adsRow.querySelector("td").innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:14px;padding:4px 0">${cells}</div>`;
+        td.innerHTML = `<div style="font-size:13px;font-weight:600;color:#1f5eff;margin-bottom:10px">📢 ${ads.length} anuncio(s) nesta campanha</div><div style="display:flex;flex-wrap:wrap;gap:14px">${cells}</div>`;
       }
 
       /* ── Boot ────────────────────────────────────── */
