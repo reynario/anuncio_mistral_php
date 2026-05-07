@@ -102,6 +102,64 @@ class InsightsAggregator
         ];
     }
 
+    public function aggregateByDate(array $rows): array
+    {
+        $byDate = [];
+        $numericFields = ['impressions', 'reach', 'clicks', 'inline_link_clicks', 'spend'];
+        $actionFields  = [
+            'actions',
+            'video_p25_watched_actions',
+            'video_p50_watched_actions',
+            'video_p75_watched_actions',
+            'video_p95_watched_actions',
+        ];
+
+        foreach ($rows as $r) {
+            $date = $r['date_start'] ?? '';
+            if (!$date) {
+                continue;
+            }
+            if (!isset($byDate[$date])) {
+                $byDate[$date] = [
+                    'date_start' => $date,
+                    'date_stop'  => $r['date_stop'] ?? $date,
+                ];
+                foreach ($numericFields as $f) {
+                    $byDate[$date][$f] = 0.0;
+                }
+                foreach ($actionFields as $f) {
+                    $byDate[$date][$f] = [];
+                }
+            }
+            foreach ($numericFields as $f) {
+                $byDate[$date][$f] += (float) ($r[$f] ?? 0);
+            }
+            foreach ($actionFields as $f) {
+                foreach ($r[$f] ?? [] as $a) {
+                    $type = $a['action_type'] ?? '';
+                    if (!$type) {
+                        continue;
+                    }
+                    $found = false;
+                    foreach ($byDate[$date][$f] as &$existing) {
+                        if (($existing['action_type'] ?? '') === $type) {
+                            $existing['value'] = (string) ((float) ($existing['value'] ?? 0) + (float) ($a['value'] ?? 0));
+                            $found = true;
+                            break;
+                        }
+                    }
+                    unset($existing);
+                    if (!$found) {
+                        $byDate[$date][$f][] = $a;
+                    }
+                }
+            }
+        }
+
+        ksort($byDate);
+        return array_values($byDate);
+    }
+
     public function aggregateByDow(array $rows, string $metric): array
     {
         $totals = array_fill(0, 7, 0.0);

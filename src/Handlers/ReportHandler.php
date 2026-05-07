@@ -78,16 +78,16 @@ class ReportHandler
             $summary     = $this->agg->buildSummary($rows);
             $prevSummary = $this->agg->buildSummary($prevRows);
 
-            // Timeline: daily breakdown via time_series
+            // Timeline: daily breakdown via time_series (aggregated to one row per day)
             $timelineParams = array_merge($insightParams, ['time_increment' => 1]);
             $tlData    = $this->meta->requestSafe("/act_{$adAccountId}/insights", $timelineParams) ?? [];
-            $timeline  = $tlData['data'] ?? [];
+            $timeline  = $this->agg->aggregateByDate($tlData['data'] ?? []);
 
             $prevTlParams = array_merge($timelineParams, [
                 'time_range' => json_encode(['since' => $prev['since'], 'until' => $prev['until']]),
             ]);
             $prevTlData   = $this->meta->requestSafe("/act_{$adAccountId}/insights", $prevTlParams) ?? [];
-            $prevTimeline = $prevTlData['data'] ?? [];
+            $prevTimeline = $this->agg->aggregateByDate($prevTlData['data'] ?? []);
 
             $reachByDow    = $this->agg->aggregateByDow($timeline, 'reach');
             $messagesByDow = $this->agg->aggregateByDow($timeline, 'conversations');
