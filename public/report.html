@@ -309,21 +309,21 @@
       </div>
 
       <!-- Tabela de campanhas -->
-      <div class="card">
+      <div class="card" id="campaigns">
         <h3>Campanhas</h3>
         <div style="overflow:auto">
           <table>
             <thead>
               <tr>
                 <th style="width:32px"></th>
-                <th>Campanha</th>
-                <th>Impressoes</th>
-                <th>Alcance</th>
-                <th>Cliques no Link</th>
-                <th>Conversas</th>
-                <th>CTR</th>
-                <th>Gasto</th>
-                <th>Custo/Conversa</th>
+                <th data-sort="campaign_name" style="cursor:pointer;user-select:none">Campanha <span class="sort-ind"></span></th>
+                <th data-sort="impressions" style="cursor:pointer;user-select:none">Impressoes <span class="sort-ind"></span></th>
+                <th data-sort="reach" style="cursor:pointer;user-select:none">Alcance <span class="sort-ind"></span></th>
+                <th data-sort="inline_link_clicks" style="cursor:pointer;user-select:none">Cliques no Link <span class="sort-ind"></span></th>
+                <th data-sort="conversations_started" style="cursor:pointer;user-select:none">Conversas <span class="sort-ind"></span></th>
+                <th data-sort="ctr" style="cursor:pointer;user-select:none">CTR <span class="sort-ind"></span></th>
+                <th data-sort="spend" style="cursor:pointer;user-select:none">Gasto <span class="sort-ind"></span></th>
+                <th data-sort="cpc" style="cursor:pointer;user-select:none">Custo/Conversa <span class="sort-ind"></span></th>
               </tr>
             </thead>
             <tbody id="campaign_rows"></tbody>
@@ -602,25 +602,61 @@
 
       /* ── Campaigns table ─────────────────────────── */
       const adsCache = {};
+      const campaignsState = { rows: [], sortField: "impressions", sortDir: "desc" };
+
+      function computeCampaignSortValue(c, field) {
+        if (field === "campaign_name") return (c.campaign_name || "").toLowerCase();
+        if (field === "conversations_started") return toNum(c.conversations_started || 0);
+        if (field === "cpc") {
+          const convs = toNum(c.conversations_started || 0);
+          return convs > 0 ? toNum(c.spend) / convs : -1;
+        }
+        return toNum(c[field] || 0);
+      }
+
+      function sortCampaigns(rows, field, dir) {
+        const mult = dir === "asc" ? 1 : -1;
+        return [...rows].sort((a, b) => {
+          const va = computeCampaignSortValue(a, field);
+          const vb = computeCampaignSortValue(b, field);
+          if (typeof va === "string") return va.localeCompare(vb) * mult;
+          return (va - vb) * mult;
+        });
+      }
+
+      function updateSortIndicators() {
+        document.querySelectorAll("#campaigns thead th[data-sort]").forEach(th => {
+          const ind = th.querySelector(".sort-ind");
+          if (!ind) return;
+          if (th.dataset.sort === campaignsState.sortField) {
+            ind.textContent = campaignsState.sortDir === "asc" ? " ▲" : " ▼";
+            ind.style.color = "var(--primary)";
+          } else {
+            ind.textContent = "";
+          }
+        });
+      }
 
       function renderCampaigns(campaigns) {
+        if (campaigns) campaignsState.rows = campaigns;
         const tbody = document.getElementById("campaign_rows");
-        if (!campaigns.length) {
+        const rows = campaignsState.rows;
+        if (!rows.length) {
           tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Sem campanhas no periodo.</td></tr>';
+          updateSortIndicators();
           return;
         }
-        const maxImp   = Math.max(1,...campaigns.map(c=>toNum(c.impressions)));
-        const maxSpend = Math.max(1,...campaigns.map(c=>toNum(c.spend)));
-        tbody.innerHTML = campaigns
-          .sort((a,b)=>toNum(b.impressions)-toNum(a.impressions))
-          .map(c=>{
+        const maxImp   = Math.max(1,...rows.map(c=>toNum(c.impressions)));
+        const maxSpend = Math.max(1,...rows.map(c=>toNum(c.spend)));
+        const sorted   = sortCampaigns(rows, campaignsState.sortField, campaignsState.sortDir);
+        tbody.innerHTML = sorted.map(c=>{
             const convs = toNum(c.conversations_started||0);
             const spend = toNum(c.spend);
             const cpc = convs > 0 ? spend / convs : null;
             const cid = c.campaign_id || "";
             return `<tr data-campaign-id="${cid}">
             <td style="text-align:center">
-              <button type="button" class="ads-toggle" data-campaign-id="${cid}" style="background:none;border:1px solid var(--line);border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px" title="Ver anuncios">▶</button>
+              <button type="button" class="ads-toggle" data-campaign-id="${cid}" style="background:none;border:1px solid var(--line);border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:11px;line-height:1" title="Ver anuncios">▶</button>
             </td>
             <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.campaign_name||cid||"-"}</td>
             <td>
@@ -639,16 +675,37 @@
           </tr>`;
           }).join("");
 
-        tbody.querySelectorAll(".ads-toggle").forEach(btn => {
-          btn.addEventListener("click", () => toggleCampaignAds(btn));
-        });
+        updateSortIndicators();
       }
+
+      // Delegated click handler for toggle and sort (resilient to re-renders)
+      document.addEventListener("click", (ev) => {
+        const sortTh = ev.target.closest("th[data-sort]");
+        if (sortTh && sortTh.closest("#campaigns")) {
+          const field = sortTh.dataset.sort;
+          if (campaignsState.sortField === field) {
+            campaignsState.sortDir = campaignsState.sortDir === "asc" ? "desc" : "asc";
+          } else {
+            campaignsState.sortField = field;
+            campaignsState.sortDir = "desc";
+          }
+          renderCampaigns();
+          return;
+        }
+        const toggleBtn = ev.target.closest(".ads-toggle");
+        if (toggleBtn) {
+          ev.preventDefault();
+          toggleCampaignAds(toggleBtn).catch(err => console.error("toggleCampaignAds failed:", err));
+        }
+      });
 
       async function toggleCampaignAds(btn) {
         const cid = btn.dataset.campaignId;
-        if (!cid) return;
+        if (!cid) { console.warn("toggle without campaignId"); return; }
         const tbody = document.getElementById("campaign_rows");
         const parentRow = btn.closest("tr");
+        if (!parentRow) { console.warn("parent row not found"); return; }
+
         const existing = tbody.querySelector(`tr.ads-row[data-parent-id="${cid}"]`);
         if (existing) {
           existing.remove();
@@ -661,7 +718,7 @@
         adsRow.className = "ads-row";
         adsRow.dataset.parentId = cid;
         adsRow.innerHTML = `<td colspan="9" style="background:#f9fbff;padding:12px"><div style="color:var(--muted);font-size:13px">Carregando anuncios...</div></td>`;
-        parentRow.after(adsRow);
+        parentRow.parentNode.insertBefore(adsRow, parentRow.nextSibling);
 
         try {
           let data = adsCache[cid];
@@ -671,7 +728,9 @@
           }
           renderAdsRow(adsRow, data.ads || []);
         } catch (err) {
-          adsRow.querySelector("td > div").innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
+          console.error("ads fetch failed", err);
+          const div = adsRow.querySelector("td > div");
+          if (div) div.innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
         }
       }
 
